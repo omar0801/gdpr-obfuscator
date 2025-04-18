@@ -1,6 +1,6 @@
-from src.obfuscator.fake_data import generate_fake_data
+from src.fake_data import generate_fake_data
 import os
-from src.obfuscator.fake_data import generate_fake_data, save_to_csv
+from src.fake_data import generate_fake_data, save_to_csv
 
 def test_returns_list_of_dicts():
     data = generate_fake_data(1)

@@ -2,6 +2,7 @@ from faker import Faker
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import csv
+import os
 
 fake = Faker()
 
@@ -62,6 +63,6 @@ def save_to_csv(data, filename):
 
 if __name__ == "__main__":
     data = generate_fake_data(100)
-    save_to_csv(data, "fake_student_data.csv")
-    print("Data saved to fake_student_data.csv")
+    os.makedirs("data", exist_ok=True)
+    save_to_csv(data, "data/fake_student_data.csv")
 
