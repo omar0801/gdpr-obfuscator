@@ -3,6 +3,10 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import csv
 import os
+import boto3
+from io import StringIO
+from botocore.exceptions import ClientError
+import logging
 
 fake = Faker()
 
@@ -54,15 +58,33 @@ def generate_fake_data(num_records):
     return data
 
 
-# function to write data to a CSV file
-def save_to_csv(data, filename):
-    with open(filename, mode="w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=data[0].keys())
-        writer.writeheader()
-        writer.writerows(data)
+# def save_to_csv(data, filename):
+#     with open(filename, mode="w", newline="", encoding="utf-8") as file:
+#         writer = csv.DictWriter(file, fieldnames=data[0].keys())
+#         writer.writeheader()
+#         writer.writerows(data)
+
+def upload_to_s3(data,bucket,key):
+    buffer = StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=data[0].keys())
+    writer.writeheader()
+    writer.writerows(data)
+
+    # Upload the file
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.put_object(Bucket=bucket, Key=key, Body=buffer.getvalue())
+    except ClientError as e:
+        logging.error(e)
+        return False
+    return True
+
+def main():
+    bucket = "gdpr-obfuscator"
+    object_key = "data.csv"
+    data = generate_fake_data(100)
+    upload_to_s3(data, bucket, object_key)
 
 if __name__ == "__main__":
-    data = generate_fake_data(100)
-    os.makedirs("data", exist_ok=True)
-    save_to_csv(data, "data/fake_student_data.csv")
+    main()
 

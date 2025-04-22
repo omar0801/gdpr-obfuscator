@@ -1,6 +1,7 @@
-from src.fake_data import generate_fake_data
-import os
-from src.fake_data import generate_fake_data, save_to_csv
+from src.upload_data import generate_fake_data, upload_to_s3, main 
+import logging
+from unittest.mock import patch, MagicMock
+from botocore.exceptions import ClientError
 
 def test_returns_list_of_dicts():
     data = generate_fake_data(1)
@@ -62,9 +63,34 @@ def test_graduation_date_is_4_months_after_cohort():
         delta_months = (grad.year - cohort.year) * 12 + (grad.month - cohort.month)
         assert delta_months == 4
 
-def test_save_to_csv_creates_file(tmp_path):
-    file_path = tmp_path / "output.csv"
-    data = generate_fake_data(5)
-    save_to_csv(data, file_path)
+@patch("src.upload_data.boto3.client")
+def test_upload_to_s3_success(mock_boto_client):
+    mock_s3 = MagicMock()
+    mock_boto_client.return_value = mock_s3
 
-    assert os.path.exists(file_path)
+    data = generate_fake_data(1)
+    result = upload_to_s3(data, "test-bucket", "test.csv")
+
+    assert result is True
+    mock_s3.put_object.assert_called_once()
+
+@patch("src.upload_data.boto3.client")
+@patch("src.upload_data.logging")
+def test_upload_to_s3_failure_logs_error(mock_logging, mock_boto_client):
+    mock_s3 = MagicMock()
+    mock_s3.put_object.side_effect = ClientError(
+    error_response={"Error": {"Code": "500", "Message": "Simulated S3 error"}},
+    operation_name="PutObject"
+)
+    mock_boto_client.return_value = mock_s3
+
+    data = generate_fake_data(1)
+    result = upload_to_s3(data, "test-bucket", "test.csv")
+
+    assert result is False
+    mock_logging.error.assert_called_once()
+
+@patch("src.upload_data.upload_to_s3")
+def test_main_executes_upload(mock_upload):
+    main()
+    mock_upload.assert_called_once()
