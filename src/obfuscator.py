@@ -68,7 +68,7 @@ def lambda_handler(event, context):
         csv_content = download_csv_from_s3(bucket, key)
         obfuscated_csv = obfuscate_csv(csv_content, pii_fields)
 
-        output_key = f"obfuscated/{key}"
+        output_key = f"{key}"
         upload_success = upload_to_s3("gdpr-obfuscator-obfuscated", output_key, obfuscated_csv)
 
         if not upload_success:

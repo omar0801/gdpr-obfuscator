@@ -47,7 +47,7 @@ def generate_fake_data(num_records):
 
         # add the fake record to the list
         data.append({
-            "student_id": fake.unique.random_int(min=1, max=999),
+            "student_id": fake.unique.random_int(min=1, max=99999),
             "name": name,
             "course": fake.random_element(courses),
             "cohort": cohort_start.strftime("%Y-%m"),
@@ -82,7 +82,7 @@ def upload_to_s3(data,bucket,key):
 def main():
     bucket = "gdpr-obfuscator-raw"
     object_key = "data.csv"
-    data = generate_fake_data(100)
+    data = generate_fake_data(10000)
     upload_to_s3(data, bucket, object_key)
 
 if __name__ == "__main__":
