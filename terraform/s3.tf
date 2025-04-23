@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "data" {
-    bucket = var.bucket_name
+    bucket = "gdpr-obfuscator-raw"
     force_destroy = true
 }
 

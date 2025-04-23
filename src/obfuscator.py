@@ -44,21 +44,32 @@ def upload_to_s3(bucket, key, content):
 
 def lambda_handler(event, context):
     try:
-        if "body" in event:
-            payload = json.loads(event["body"])
+        # Check if it's a direct payload
+        if "file_to_obfuscate" in event or ("body" in event and "file_to_obfuscate" in json.loads(event["body"])):
+            if "body" in event:
+                payload = json.loads(event["body"])
+            else:
+                payload = event
+
+            bucket, key = parse_s3_uri(payload["file_to_obfuscate"])
+            pii_fields = payload["pii_fields"]
         else:
-            payload = event
+            # Handle S3 event payload
+            records = event.get("Records", [])
+            if not records:
+                raise Exception("No records found in event")
 
-        s3_path = payload["file_to_obfuscate"]
-        pii_fields = payload["pii_fields"]
+            s3_info = records[0]["s3"]
+            bucket = s3_info["bucket"]["name"]
+            key = s3_info["object"]["key"]
 
-        bucket, key = parse_s3_uri(s3_path)
+            pii_fields = ["name", "email_address"]
 
         csv_content = download_csv_from_s3(bucket, key)
         obfuscated_csv = obfuscate_csv(csv_content, pii_fields)
 
         output_key = f"obfuscated/{key}"
-        upload_success = upload_to_s3(bucket, output_key, obfuscated_csv)
+        upload_success = upload_to_s3("gdpr-obfuscator-obfuscated", output_key, obfuscated_csv)
 
         if not upload_success:
             raise Exception("Upload failed")
@@ -67,7 +78,7 @@ def lambda_handler(event, context):
             "statusCode": 200,
             "body": json.dumps({
                 "message": "File obfuscated and uploaded",
-                "output_s3_path": f"s3://{bucket}/{output_key}"
+                "output_s3_path": f"s3://gdpr-obfuscator-obfuscated/{output_key}"
             })
         }
 

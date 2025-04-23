@@ -80,7 +80,7 @@ def upload_to_s3(data,bucket,key):
     return True
 
 def main():
-    bucket = "gdpr-obfuscator"
+    bucket = "gdpr-obfuscator-raw"
     object_key = "data.csv"
     data = generate_fake_data(100)
     upload_to_s3(data, bucket, object_key)

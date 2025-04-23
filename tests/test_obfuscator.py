@@ -167,3 +167,39 @@ class TestLambdaHandler:
         assert response["statusCode"] == 500
         assert "error" in response["body"]
         mock_logging.error.assert_called()
+
+    @patch("src.obfuscator.upload_to_s3")
+    @patch("src.obfuscator.obfuscate_csv")
+    @patch("src.obfuscator.download_csv_from_s3")
+    def test_lambda_handler_s3_event(
+        self,
+        mock_download_csv,
+        mock_obfuscate_csv,
+        mock_upload
+    ):
+        mock_download_csv.return_value = "name,email\nJohn,john@example.com"
+        mock_obfuscate_csv.return_value = "name,email\n***,john@example.com"
+        mock_upload.return_value = True
+
+        event = {
+            "Records": [{
+                "s3": {
+                    "bucket": {"name": "gdpr-obfuscator-raw"},
+                    "object": {"key": "test.csv"}
+                }
+            }]
+        }
+
+        response = lambda_handler(event, None)
+
+        assert response["statusCode"] == 200
+        assert "output_s3_path" in response["body"]
+
+    def test_lambda_handler_s3_event_missing_records(self):
+        event = {}  # no "Records" key
+
+        response = lambda_handler(event, None)
+
+        assert response["statusCode"] == 500
+        assert "No records found in event" in response["body"]
+
