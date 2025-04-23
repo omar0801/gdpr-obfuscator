@@ -6,4 +6,4 @@ htmlcov/
 *.tfstate
 *.tfstate.backup
 .terraform.lock.hcl
-fake_student_data.csv
+src/lambda.zip
