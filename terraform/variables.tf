@@ -1,3 +1,3 @@
 variable "bucket_name" {
-    default = "gdpr-obfuscator"
+    default = "gdpr-obfuscator-raw"
 }
