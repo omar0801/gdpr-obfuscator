@@ -10,3 +10,4 @@ s3transfer==0.11.4
 six==1.17.0
 urllib3==2.3.0
 pytest-testdox==3.1.0
+Faker==37.1.0
