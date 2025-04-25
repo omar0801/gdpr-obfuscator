@@ -20,3 +20,18 @@ jobs:
         run: make create-environment
       - name: Install Modules
         run: make dev-setup
+
+      - name: safety check
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{secrets.SAFETY_API_KEY}}
+
+      - name: Configure AWS Credential
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: run-all-checks
+        run: make run-checks
