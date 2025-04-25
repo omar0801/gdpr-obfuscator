@@ -3,8 +3,13 @@ from io import StringIO
 import boto3
 import logging
 import json
+import time
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3_client = boto3.client('s3')
+
 
 def obfuscate_fields(row, pii_fields):
     for field in pii_fields:
@@ -43,6 +48,7 @@ def upload_to_s3(bucket, key, content):
         return False
 
 def lambda_handler(event, context):
+    start_time = time.time()
     try:
         # Check if it's a direct payload
         if "file_to_obfuscate" in event or ("body" in event and "file_to_obfuscate" in json.loads(event["body"])):
@@ -74,13 +80,18 @@ def lambda_handler(event, context):
         if not upload_success:
             raise Exception("Upload failed")
 
+        duration = round(time.time() - start_time, 2)
+        logging.info(f"✅ Obfuscation completed in {duration}s")
+
         return {
             "statusCode": 200,
             "body": json.dumps({
                 "message": "File obfuscated and uploaded",
-                "output_s3_path": f"s3://gdpr-obfuscator-obfuscated/{output_key}"
+                "output_s3_path": f"s3://gdpr-obfuscator-obfuscated/{output_key}",
+                "duration_seconds": duration
             })
         }
+
 
     except Exception as e:
         logging.error(f"Lambda error: {e}")
