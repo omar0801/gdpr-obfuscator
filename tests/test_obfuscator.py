@@ -1,5 +1,5 @@
 from src.obfuscator import obfuscate_fields , parse_s3_uri , obfuscate_csv , download_csv_from_s3 , upload_to_s3 , lambda_handler
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock ,ANY
 import json
 
 
@@ -78,6 +78,7 @@ class TestUploadCSV:
         mock_logging.error.assert_called_once()
 
 class TestLambdaHandler:
+    @patch("src.obfuscator.sns_client.publish")
     @patch("src.obfuscator.upload_to_s3")
     @patch("src.obfuscator.obfuscate_csv")
     @patch("src.obfuscator.download_csv_from_s3")
@@ -87,7 +88,8 @@ class TestLambdaHandler:
         mock_parse_uri,
         mock_download_csv,
         mock_obfuscate_csv,
-        mock_upload
+        mock_upload,
+        mock_sns_publish
     ):
         # Arrange
         mock_parse_uri.return_value = ("test-bucket", "test.csv")
@@ -110,18 +112,22 @@ class TestLambdaHandler:
         mock_download_csv.assert_called_once()
         mock_obfuscate_csv.assert_called_once()
         mock_upload.assert_called_once()
+        mock_sns_publish.assert_called_once()
 
+
+    @patch("src.obfuscator.sns_client.publish")
     @patch("src.obfuscator.upload_to_s3")
     @patch("src.obfuscator.obfuscate_csv")
     @patch("src.obfuscator.download_csv_from_s3")
     @patch("src.obfuscator.parse_s3_uri")
     def test_lambda_handler_with_wrapped_event(
-    self,
-    mock_parse_uri,
-    mock_download_csv,
-    mock_obfuscate_csv,
-    mock_upload
-):
+        self,
+        mock_parse_uri,
+        mock_download_csv,
+        mock_obfuscate_csv,
+        mock_upload,
+        mock_sns_publish
+    ):
         mock_parse_uri.return_value = ("bucket", "file.csv")
         mock_download_csv.return_value = "name,email\nJohn,john@example.com"
         mock_obfuscate_csv.return_value = "name,email\n***,john@example.com"
@@ -138,20 +144,26 @@ class TestLambdaHandler:
 
         assert response["statusCode"] == 200
         assert "output_s3_path" in response["body"]
+        mock_sns_publish.assert_called_once_with(
+            TopicArn=ANY,
+            Message=ANY
+        )
 
+    @patch("src.obfuscator.sns_client.publish")
     @patch("src.obfuscator.upload_to_s3")
     @patch("src.obfuscator.obfuscate_csv")
     @patch("src.obfuscator.download_csv_from_s3")
     @patch("src.obfuscator.parse_s3_uri")
-    @patch("src.obfuscator.logging")
+    @patch("src.obfuscator.logger")
     def test_lambda_handler_upload_failure_logs_error(
-    self,
-    mock_logging,
-    mock_parse_uri,
-    mock_download_csv,
-    mock_obfuscate_csv,
-    mock_upload
-):
+        self,
+        mock_logger,
+        mock_parse_uri,
+        mock_download_csv,
+        mock_obfuscate_csv,
+        mock_upload,
+        mock_sns_publish
+    ):
         mock_parse_uri.return_value = ("bucket", "file.csv")
         mock_download_csv.return_value = "some,data\n"
         mock_obfuscate_csv.return_value = "some,obfuscated\n"
@@ -166,8 +178,11 @@ class TestLambdaHandler:
 
         assert response["statusCode"] == 500
         assert "error" in response["body"]
-        mock_logging.error.assert_called()
+        mock_logger.error.assert_called()
+        mock_sns_publish.assert_called_once()
 
+
+    @patch("src.obfuscator.sns_client.publish")
     @patch("src.obfuscator.upload_to_s3")
     @patch("src.obfuscator.obfuscate_csv")
     @patch("src.obfuscator.download_csv_from_s3")
@@ -175,7 +190,8 @@ class TestLambdaHandler:
         self,
         mock_download_csv,
         mock_obfuscate_csv,
-        mock_upload
+        mock_upload,
+        mock_sns_publish
     ):
         mock_download_csv.return_value = "name,email\nJohn,john@example.com"
         mock_obfuscate_csv.return_value = "name,email\n***,john@example.com"
@@ -194,12 +210,60 @@ class TestLambdaHandler:
 
         assert response["statusCode"] == 200
         assert "output_s3_path" in response["body"]
+        mock_sns_publish.assert_called_once()
 
-    def test_lambda_handler_s3_event_missing_records(self):
+    @patch("src.obfuscator.sns_client.publish")
+    def test_lambda_handler_s3_event_missing_records(self, mock_sns_publish):
         event = {}  # no "Records" key
 
         response = lambda_handler(event, None)
 
         assert response["statusCode"] == 500
         assert "No records found in event" in response["body"]
+        mock_sns_publish.assert_called_once()
+
+    @patch("src.obfuscator.sns_client.publish", side_effect=Exception("SNS send failed"))
+    @patch("src.obfuscator.upload_to_s3")
+    @patch("src.obfuscator.obfuscate_csv")
+    @patch("src.obfuscator.download_csv_from_s3")
+    @patch("src.obfuscator.parse_s3_uri")
+    @patch("src.obfuscator.logger")
+    def test_lambda_success_sns_failure(
+        self,
+        mock_logger,
+        mock_parse_uri,
+        mock_download_csv,
+        mock_obfuscate_csv,
+        mock_upload,
+        mock_sns_publish
+    ):
+        mock_parse_uri.return_value = ("bucket", "file.csv")
+        mock_download_csv.return_value = "name,email\nJohn,john@example.com"
+        mock_obfuscate_csv.return_value = "name,email\n***,john@example.com"
+        mock_upload.return_value = True
+
+        event = {
+            "file_to_obfuscate": "s3://bucket/file.csv",
+            "pii_fields": ["name"]
+        }
+
+        response = lambda_handler(event, None)
+
+        assert response["statusCode"] == 200
+        assert "output_s3_path" in response["body"]
+        mock_logger.error.assert_any_call("❌ Failed to send success SNS: SNS send failed")
+
+    @patch("src.obfuscator.sns_client.publish", side_effect=Exception("SNS failure error"))
+    @patch("src.obfuscator.logger")
+    def test_lambda_failure_sns_fails_too(self, mock_logger, mock_sns_publish):
+        # Event triggers the error branch (no Records)
+        event = {}
+
+        response = lambda_handler(event, None)
+
+        assert response["statusCode"] == 500
+        assert "No records found in event" in response["body"]
+        mock_logger.error.assert_any_call("❌ Failed to send failure SNS: SNS failure error")
+
+
 

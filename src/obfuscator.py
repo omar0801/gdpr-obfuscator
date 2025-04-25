@@ -9,6 +9,8 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 s3_client = boto3.client('s3')
+sns_client = boto3.client('sns')
+TOPIC_ARN = "arn:aws:sns:eu-west-2:463071640306:gdpr-obfuscator-alerts"
 
 
 def obfuscate_fields(row, pii_fields):
@@ -83,6 +85,17 @@ def lambda_handler(event, context):
         duration = round(time.time() - start_time, 2)
         logging.info(f"✅ Obfuscation completed in {duration}s")
 
+        try:
+            logger.info("📤 Attempting to send success EMAIL...")
+            response = sns_client.publish(
+                TopicArn=TOPIC_ARN,
+                Message=f"✅ Obfuscation succeeded in {duration}s.\nFile: {key}"
+            )
+            logger.info(f"📬 SNS success publish response: {response}")
+        except Exception as sns_error:
+            logger.error(f"❌ Failed to send success SNS: {sns_error}")
+
+
         return {
             "statusCode": 200,
             "body": json.dumps({
@@ -94,7 +107,19 @@ def lambda_handler(event, context):
 
 
     except Exception as e:
-        logging.error(f"Lambda error: {e}")
+        error_message = f"❌ Obfuscation failed: {str(e)}"
+        logger.error(f"Lambda error: {error_message}")
+
+        try: 
+            logger.info("📤 Attempting to send failure EMAIL...")
+            response = sns_client.publish(
+                TopicArn=TOPIC_ARN,
+                Message=error_message
+            )
+            logger.info(f"📬 SNS failure publish response: {response}")
+        except Exception as sns_error:
+            logger.error(f"❌ Failed to send failure SNS: {sns_error}")
+
         return {
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})

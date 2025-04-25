@@ -53,3 +53,22 @@ resource "aws_iam_policy_attachment" "attach_s3_access" {
   policy_arn = aws_iam_policy.s3_access.arn
 }
 
+resource "aws_iam_policy" "sns_publish" {
+  name = "lambda-sns-publish"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = "sns:Publish",
+        Resource = aws_sns_topic.obfuscation_alerts.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy_attachment" "attach_sns_publish" {
+  name       = "lambda-sns-publish"
+  roles      = [aws_iam_role.lambda_role.name]
+  policy_arn = aws_iam_policy.sns_publish.arn
+}
