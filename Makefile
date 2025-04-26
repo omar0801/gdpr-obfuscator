@@ -77,3 +77,7 @@ unit-test:
 
 ## Run all checks
 run-checks: security-test run-black unit-test
+
+## Run local obfuscation using sample file
+local-obfuscate:
+	$(call execute_in_env, python main.py --input data/sample.csv --output data/obfuscated.csv --fields name email_address)
