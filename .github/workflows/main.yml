@@ -36,14 +36,19 @@ jobs:
       - name: run-all-checks
         run: make run-checks
 
-  deploy-terraform:
-    name: deploy-terraform
+  deploy-and-upload:
+    name: Deploy infrastructure and upload fake data
     runs-on: ubuntu-latest
     environment: development
     needs: run-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Configure AWS Credential
         uses: aws-actions/configure-aws-credentials@v4
@@ -68,6 +73,13 @@ jobs:
         working-directory: terraform
         run: terraform apply -auto-approve
   
-  
+      - name: Upload fake data to S3
+        run: |
+          pip install -r requirements.txt
+          python src/upload_data.py
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
   
   
