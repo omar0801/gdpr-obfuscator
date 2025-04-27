@@ -1,7 +1,7 @@
 # GDPR Obfuscator Project
 
 ## 📜 Context
-The purpose of this project is to create a general-purpose tool to process data being ingested to AWS and intercept personally identifiable information (PII). All information stored by Northcoders data projects should be for bulk data analysis only. Consequently, there is a requirement under [GDPR](https://ico.org.uk/media/for-organisations/guide-to-data-protection/guide-to-the-general-data-protection-regulation-gdpr-1-1.pdf) to ensure that all data containing information that can be used to identify an individual should be anonymised. 
+The purpose of this project is to create a general-purpose tool to process data being ingested to AWS and intercept personally identifiable information (PII). There is a requirement under [GDPR](https://ico.org.uk/media/for-organisations/guide-to-data-protection/guide-to-the-general-data-protection-regulation-gdpr-1-1.pdf) to ensure that all data containing information that can be used to identify an individual should be anonymised. 
 
 ## ✅ Features
 - Obfuscates PII fields in CSV files using AWS Lambda
