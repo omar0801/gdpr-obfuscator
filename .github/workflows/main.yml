@@ -66,11 +66,15 @@ jobs:
 
       - name: Terraform plan
         working-directory: terraform
+        env:
+          TF_VAR_SNS_EMAIL: ${{secrets.SNS_EMAIL}}
         run: terraform plan
 
 
       - name: Terraform apply
         working-directory: terraform
+        env:
+          TF_VAR_SNS_EMAIL: ${{secrets.SNS_EMAIL}}
         run: terraform apply -auto-approve
   
       - name: Upload fake data to S3
