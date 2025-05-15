@@ -31,7 +31,7 @@ The purpose of this project is to create a general-purpose tool to process data 
 make create-environment
 make dev-setup
 make generate-sample   # Creates local CSV sample in ./data
-make test-main-local    # Tests obfuscation with sample
+make local-obfuscate    # Tests obfuscation with sample
 ```
 
 ## 🚀 Deploy to AWS
